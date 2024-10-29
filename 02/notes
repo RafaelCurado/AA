@@ -1,0 +1,28 @@
+ - Divide and conquer
+
+Mult(b) = 	| 0, b = 0,1
+			| 1 + Mult(floor(b/2)) + Mult(Ceil(b/2)) , b > 1
+			
+			
+- Decrease and conquer
+
+2⁷ = 2 * 2³ * 2³  -> do just 1 call and 2 multiplications
+
+	 2 * 2¹ * 2¹  -> again just 1 call and 2 multiplicaitons
+	 	 trivial
+	 
+	 
+	2⁷  ->  2³  ->  2¹ 		4 multiplications total
+	
+	
+	
+2^11		2 mult
+2*2⁵*2⁵		2 mult 		5 mult total - 11 = 1 0 1 1
+2*2²*2²		1 mult						  = X 0 1 1
+2¹*2¹										  1+2+2 = 5 mult
+
+
+
+Mult(b) = 	| 0, b = 0,1 
+			| 1 + Mult(b/2) ; b > 1 and b is evan
+			| 2 + Mult(floor(b/2)) ; b > 1 and b is odd

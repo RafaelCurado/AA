@@ -1,0 +1,10 @@
+Determine the largest graph that you can process on your computer, without taking too much
+time.
+
+ |
+ ---> what does this mean? highest amount of vertices? what about the edges?
+
+
+
+
+ como uso o template do relatório?
