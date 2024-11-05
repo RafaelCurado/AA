@@ -24,7 +24,6 @@ def generate_unique_points(num_points, min_distance=10):
     return list(points)
 
 
-
 def generate_random_graph(num_vertices, edge_percentage):
     points = generate_unique_points(num_vertices)
     G = nx.Graph()
@@ -40,28 +39,8 @@ def generate_random_graph(num_vertices, edge_percentage):
 
     G.add_edges_from(random_edges)
     
-    return G, points
+    return G
 
-
-
-def visualize_graph(G, coloring, filename):
-    plt.figure(figsize=(8, 6))
-    
-    pos = nx.get_node_attributes(G, 'pos')
-
-    colors = [
-        'red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 
-        'gray', 'cyan', 'magenta', 'lime', 'olive', 'navy', 'maroon', 'teal',
-        'gold', 'violet', 'turquoise', 'indigo', 'khaki', 'plum', 'salmon', 'tan'
-    ]   
-
-
-    node_colors = [colors[coloring[i]] for i in G.nodes()]
-
-    nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=500, font_size=12, edge_color='gray')
-    
-    plt.savefig(filename)
-    plt.show()
 
 
 # EXAUSTIVE SEARCH
@@ -78,17 +57,17 @@ def exhaustive_chromatic_number(graph):
     for num_colors in range(1, n + 1):
         for coloring in product(range(num_colors), repeat=n):
             if is_valid_coloring(graph, coloring):
-                return num_colors, coloring  
-    return n, None  # Worst case -> chromatic number = N of vertices
+                return num_colors  
+    return n  # Worst case -> chromatic number = N of vertices
 
 
-# GREEDY HEURISTIC
+# GREEDY HEURISTIC (TOP)
 
-def greedy_chromatic_number(graph):
+def greedy_chromatic_number_top(graph):
     n = len(graph.nodes())
     coloring = {}
     
-    # Sort vertices by descending degree - N of edges
+    # Sort vertices by descending degree = n of edges
     vertices = sorted(graph.nodes(), key=lambda x: graph.degree[x], reverse=True)
     
     for vertex in vertices:
@@ -103,69 +82,111 @@ def greedy_chromatic_number(graph):
     
     # Max color used + 1
     chromatic_number = max(coloring.values()) + 1
-    return chromatic_number, coloring
+    return chromatic_number
+
+
+# GREEDY HEURISTIC (BOTTOM)
+
+def greedy_chromatic_number_bottom(graph):
+    n = len(graph.nodes())
+    coloring = {}
+    
+    # Sort vertices by ascending degree = n of edges
+    vertices = sorted(graph.nodes(), key=lambda x: graph.degree[x], reverse=False)
+    
+    for vertex in vertices:
+        neighbor_colors = {coloring[neighbor] for neighbor in graph.neighbors(vertex) if neighbor in coloring}  
+        
+        # Find the smallest available color that isn't used by neighbors
+        color = 0
+        while color in neighbor_colors:
+            color += 1
+        
+        coloring[vertex] = color  # Assign the found color
+    
+    # Max color used + 1
+    chromatic_number = max(coloring.values()) + 1
+    return chromatic_number
 
 
 
 
 def main():
     edges = [12.5, 25, 50, 75]
-    trials = 1
+    trials = 2
+    maxVertices = 14
 
-    with open('greedy_results.csv', mode='w', newline='') as greedy_file, open('exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
-        
-        greedy_writer = csv.writer(greedy_file)
+    with open('data/greedy_results_top.csv', mode='w', newline='') as greedy_top_file, \
+         open('data/greedy_results_bottom.csv', mode='w', newline='') as greedy_bottom_file, \
+         open('data/exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
+
+        # greedy_top_writer = csv.writer(greedy_top_file)
+        # greedy_bottom_writer = csv.writer(greedy_bottom_file)
         exhaustive_writer = csv.writer(exhaustive_file)
 
         headers = ['Vertices / Edge %'] + [f'{edge}%' for edge in edges]
-        greedy_writer.writerow(headers)
+        # greedy_top_writer.writerow(headers)
+        # greedy_bottom_writer.writerow(headers)
         exhaustive_writer.writerow(headers)
 
-        for num_vertices in range(4, 12):
+        for num_vertices in range(4, maxVertices + 1):  # Adjusted range to include maxVertices
 
-            greedy_row = [num_vertices]
+            greedy_top_row = [num_vertices]
+            greedy_bottom_row = [num_vertices]
             exhaustive_row = [num_vertices]
 
             for possible_edges in edges:
 
-                greedy_times = []
-                exaustive_times = []
+                greedy_top_times = []
+                greedy_bottom_times = []
+                exhaustive_times = []
 
-                G, points = generate_random_graph(num_vertices, possible_edges/100) # calculate points
+                G = generate_random_graph(num_vertices, possible_edges / 100)  # Generate the graph
 
                 for trial in range(trials):
-
-                    start = time.time()    
-                    chromatic_num_greedy, coloring = greedy_chromatic_number(G)
-                    end = time.time()
-                    greedy_times.append((end-start)*10**3)
-
-
+                    # Greedy Top
                     start = time.time()
-                    chromatic_num_exhaustive, coloring = exhaustive_chromatic_number(G)
+                    chromatic_num_greedy_top = greedy_chromatic_number_top(G)
                     end = time.time()
-                    exaustive_times.append((end-start)*10**3)
+                    greedy_top_times.append((end - start) * 10**3)
 
-                avg_greedy_time = sum(greedy_times)/trials
-                avg_exhaustive_time = sum(exaustive_times)/trials
+                    # Greedy Bottom
+                    start = time.time()
+                    chromatic_num_greedy_bottom = greedy_chromatic_number_bottom(G)
+                    end = time.time()
+                    greedy_bottom_times.append((end - start) * 10**3)
 
-                print(f"\nGreedy Chromatic Number ({num_vertices} vertices, {possible_edges}% edges): "+str(chromatic_num_greedy))
-                print(f"Greedy Execution Time: {avg_greedy_time:.4f} ms")
-                print(f"Exaustive Chromatic Number ({num_vertices} vertices, {possible_edges}% edges): "+str(chromatic_num_exhaustive))
+                    # Exhaustive Search
+                    start = time.time()
+                    chromatic_num_exhaustive = exhaustive_chromatic_number(G)
+                    end = time.time()
+                    exhaustive_times.append((end - start) * 10**3)
+
+                # Calculate averages
+                avg_greedy_top_time = sum(greedy_top_times) / trials
+                avg_greedy_bottom_time = sum(greedy_bottom_times) / trials
+                avg_exhaustive_time = sum(exhaustive_times) / trials
+
+                print(f"\n\n\n({num_vertices} vertices, {possible_edges}% edges)")
+
+                print(f"\nGreedy Chromatic Number (Top): "+str(chromatic_num_greedy_top))
+                print(f"Greedy (Top) Execution Time: {avg_greedy_top_time:.4f} ms")
+
+                print(f"\nGreedy Chromatic Number (Bottom): "+str(chromatic_num_greedy_bottom))
+                print(f"Greedy (Bottom) Execution Time: {avg_greedy_bottom_time:.4f} ms")
+
+                print(f"\nExaustive Chromatic Number: "+str(chromatic_num_exhaustive))
                 print(f"Exhaustive Execution Time: {avg_exhaustive_time:.4f} ms")
 
-                greedy_row.append(avg_greedy_time)
+                # Append results to rows
+                greedy_top_row.append(avg_greedy_top_time)
+                greedy_bottom_row.append(avg_greedy_bottom_time)
                 exhaustive_row.append(avg_exhaustive_time)
 
-                #visualize_graph(G, coloring, "graph_visualization.png")
-
-            greedy_writer.writerow(greedy_row)
+            # Write rows to CSV files
+            # greedy_top_writer.writerow(greedy_top_row)
+            # greedy_bottom_writer.writerow(greedy_bottom_row)
             exhaustive_writer.writerow(exhaustive_row)
-
-        #print("Points: ", points)  
-        #visualize_graph(G, coloring, "graph_visualization.png")
-        #nx.write_graphml(G, "graph.graphml")
-
 
 
 if __name__ == "__main__":

@@ -1,10 +1,16 @@
 Determine the largest graph that you can process on your computer, without taking too much
 time.
-
- |
- ---> what does this mean? highest amount of vertices? what about the edges?
+    ---> what does this mean? highest amount of vertices? what about the edges?
 
 
 
+----- 29 / 10 ------
 
- como uso o template do relatório?
+- inverter a heuristica -> começar pelo vertice com menos ligações
+- escala logaritmica nos plots
+
+
+
+------ 05/11 -------
+
+- 

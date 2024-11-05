@@ -1,14 +1,13 @@
-import networkx as nx
-import matplotlib.pyplot as plt
 import numpy as np
+import networkx as nx
 import random
 import time
 import csv
 from itertools import combinations, product
 
+# Set the random seed for reproducibility
 studentN = 103199
 random.seed(studentN)
-
 
 def generate_unique_points(num_points, min_distance=10):
     points = set()
@@ -16,157 +15,137 @@ def generate_unique_points(num_points, min_distance=10):
         x = random.randint(1, 1000)
         y = random.randint(1, 1000)
         point = (x, y)
-
+        
         # Ensure points are unique and not too close to each other
         if all(np.linalg.norm(np.array(point) - np.array(p)) >= min_distance for p in points):
             points.add(point)
 
     return list(points)
 
-
-
 def generate_random_graph(num_vertices, edge_percentage):
     points = generate_unique_points(num_vertices)
     G = nx.Graph()
-    
     for i, point in enumerate(points):
         G.add_node(i, pos=point)
-    
+
     max_edges = num_vertices * (num_vertices - 1) // 2
     num_edges = int(max_edges * edge_percentage)
-
     possible_edges = list(combinations(range(num_vertices), 2))
     random_edges = random.sample(possible_edges, num_edges)
-
     G.add_edges_from(random_edges)
-    
-    return G, points
+    return G
 
-
-
-def visualize_graph(G, coloring, filename):
-    plt.figure(figsize=(8, 6))
-    
-    pos = nx.get_node_attributes(G, 'pos')
-
-    colors = [
-        'red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 
-        'gray', 'cyan', 'magenta', 'lime', 'olive', 'navy', 'maroon', 'teal',
-        'gold', 'violet', 'turquoise', 'indigo', 'khaki', 'plum', 'salmon', 'tan'
-    ]   
-
-
-    node_colors = [colors[coloring[i]] for i in G.nodes()]
-
-    nx.draw(G, pos, with_labels=True, node_color=node_colors, node_size=500, font_size=12, edge_color='gray')
-    
-    plt.savefig(filename)
-    plt.show()
-
-
-# EXAUSTIVE SEARCH
-
+# Exhaustive Search with tracking of operations and configurations tested
 def is_valid_coloring(graph, coloring):
     for u, v in graph.edges():
         if coloring[u] == coloring[v]:
             return False
-    return True 
+    return True
 
 def exhaustive_chromatic_number(graph):
     n = len(graph.nodes())
+    basic_operations = 0
+    configurations_tested = 0
 
     for num_colors in range(1, n + 1):
         for coloring in product(range(num_colors), repeat=n):
+            configurations_tested += 1
+            basic_operations += n  # Each check for validity is an operation
             if is_valid_coloring(graph, coloring):
-                return num_colors, coloring  
-    return n, None  # Worst case -> chromatic number = N of vertices
+                return num_colors, basic_operations, configurations_tested
+    return n, basic_operations, configurations_tested  # Worst case
 
-
-# GREEDY HEURISTIC
-
-def greedy_chromatic_number(graph):
+# Greedy Heuristic (Top) with tracking of operations and configurations tested
+def greedy_chromatic_number_top(graph):
     n = len(graph.nodes())
     coloring = {}
-    
-    # Sort vertices by descending degree = n of edges
+    basic_operations = 0
+    configurations_tested = 0
+
     vertices = sorted(graph.nodes(), key=lambda x: graph.degree[x], reverse=True)
     
     for vertex in vertices:
         neighbor_colors = {coloring[neighbor] for neighbor in graph.neighbors(vertex) if neighbor in coloring}
-        
-        # Find the smallest available color that isn't used by neighbors
         color = 0
         while color in neighbor_colors:
             color += 1
-        
-        coloring[vertex] = color  # Assign the found color
+            basic_operations += 1  # Checking if color is in neighbor_colors is a basic operation
+
+        coloring[vertex] = color
+        configurations_tested += 1  # Each assignment is considered a configuration
     
-    # Max color used + 1
     chromatic_number = max(coloring.values()) + 1
-    return chromatic_number, coloring
+    return chromatic_number, basic_operations, configurations_tested
 
-
-
-
+# Main experiment function to log data to separate CSVs
 def main():
     edges = [12.5, 25, 50, 75]
-    trials = 1
+    trials = 3
+    maxVertices = 10
 
-    with open('greedy_results.csv', mode='w', newline='') as greedy_file, open('exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
+    with open('metrics_data/greedy_results.csv', mode='w', newline='') as greedy_file, \
+         open('metrics_data/exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
         
         greedy_writer = csv.writer(greedy_file)
         exhaustive_writer = csv.writer(exhaustive_file)
 
-        headers = ['Vertices / Edge %'] + [f'{edge}%' for edge in edges]
+        # CSV headers
+        headers = ['Vertices', 'Edge %', 'Chromatic Number', 'Avg Time (ms)', 
+                   'Basic Operations', 'Configurations Tested', 'Precision']
         greedy_writer.writerow(headers)
-        exhaustive_writer.writerow(headers)
+        exhaustive_writer.writerow(headers[:-1])  # Exhaustive doesn't need precision
 
-        for num_vertices in range(4, 12):
+        for num_vertices in range(4, maxVertices + 1):
+            for edge_percentage in edges:
+                G = generate_random_graph(num_vertices, edge_percentage / 100)
 
-            greedy_row = [num_vertices]
-            exhaustive_row = [num_vertices]
-
-            for possible_edges in edges:
-
+                # Greedy Heuristic (Top)
                 greedy_times = []
-                exaustive_times = []
-
-                G, points = generate_random_graph(num_vertices, possible_edges/100) # calculate points
-
-                for trial in range(trials):
-
-                    start = time.time()    
-                    chromatic_num_greedy, coloring = greedy_chromatic_number(G)
-                    end = time.time()
-                    greedy_times.append((end-start)*10**3)
-
-
+                greedy_basic_ops = 0
+                greedy_configs = 0
+                chromatic_num_greedy = None
+                
+                for _ in range(trials):
                     start = time.time()
-                    chromatic_num_exhaustive, coloring = exhaustive_chromatic_number(G)
+                    chromatic_num_greedy, basic_ops_greedy, configs_greedy = greedy_chromatic_number_top(G)
                     end = time.time()
-                    exaustive_times.append((end-start)*10**3)
+                    greedy_times.append((end - start) * 10**3)
+                    greedy_basic_ops += basic_ops_greedy
+                    greedy_configs += configs_greedy
+                
+                avg_greedy_time = sum(greedy_times) / trials
+                avg_greedy_ops = greedy_basic_ops // trials
+                avg_greedy_configs = greedy_configs // trials
 
-                avg_greedy_time = sum(greedy_times)/trials
-                avg_exhaustive_time = sum(exaustive_times)/trials
+                # Exhaustive Search (only for smaller instances)
+                if num_vertices <= 11:
+                    exhaustive_times = []
+                    exhaustive_basic_ops = 0
+                    exhaustive_configs = 0
+                    chromatic_num_exhaustive = None
 
-                print(f"\nGreedy Chromatic Number ({num_vertices} vertices, {possible_edges}% edges): "+str(chromatic_num_greedy))
-                print(f"Greedy Execution Time: {avg_greedy_time:.4f} ms")
-                print(f"Exaustive Chromatic Number ({num_vertices} vertices, {possible_edges}% edges): "+str(chromatic_num_exhaustive))
-                print(f"Exhaustive Execution Time: {avg_exhaustive_time:.4f} ms")
+                    for _ in range(trials):
+                        start = time.time()
+                        chromatic_num_exhaustive, basic_ops_exhaustive, configs_exhaustive = exhaustive_chromatic_number(G)
+                        end = time.time()
+                        exhaustive_times.append((end - start) * 10**3)
+                        exhaustive_basic_ops += basic_ops_exhaustive
+                        exhaustive_configs += configs_exhaustive
 
-                greedy_row.append(avg_greedy_time)
-                exhaustive_row.append(avg_exhaustive_time)
+                    avg_exhaustive_time = sum(exhaustive_times) / trials
+                    avg_exhaustive_ops = exhaustive_basic_ops // trials
+                    avg_exhaustive_configs = exhaustive_configs // trials
+                    exhaustive_writer.writerow([num_vertices, edge_percentage, chromatic_num_exhaustive, 
+                                                f"{avg_exhaustive_time:.4f}", avg_exhaustive_ops, avg_exhaustive_configs])
 
-                #visualize_graph(G, coloring, "graph_visualization.png")
+                    # Calculate precision
+                    precision = abs(chromatic_num_exhaustive - chromatic_num_greedy)
+                else:
+                    precision = None  # Precision not applicable when exhaustive not run
 
-            greedy_writer.writerow(greedy_row)
-            exhaustive_writer.writerow(exhaustive_row)
-
-        #print("Points: ", points)  
-        #visualize_graph(G, coloring, "graph_visualization.png")
-        #nx.write_graphml(G, "graph.graphml")
-
-
+                # Write greedy heuristic results with precision
+                greedy_writer.writerow([num_vertices, edge_percentage, chromatic_num_greedy, 
+                                        f"{avg_greedy_time:.4f}", avg_greedy_ops, avg_greedy_configs, precision])
 
 if __name__ == "__main__":
     main()
