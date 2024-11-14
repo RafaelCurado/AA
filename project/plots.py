@@ -6,9 +6,9 @@ if not os.path.exists('plots'):
     os.makedirs('plots')
 
 # Read the CSVs for Greedy Top and Greedy Bottom heuristics
-greedy_top_data = pd.read_csv('data/greedy_top_results.csv')
-greedy_bottom_data = pd.read_csv('data/greedy_bottom_results.csv')
-exhaustive_data = pd.read_csv('data/exhaustive_results.csv')
+greedy_top_data = pd.read_csv('exec_times/greedy_top_times.csv')
+greedy_bottom_data = pd.read_csv('exec_times/greedy_bottom_times.csv')
+exhaustive_data = pd.read_csv('exec_times/exhaustive_times.csv')
 
 # Strip the '%' symbol for easier handling of edge percentage values
 edges = greedy_top_data.columns[1:].str.rstrip('%').astype(float)
@@ -21,27 +21,27 @@ exhaustive_vertices = exhaustive_data['Vertices / Edge %']
 common_vertices = greedy_vertices[greedy_vertices.isin(exhaustive_vertices)].values
 
 # Filter the datasets to include only the common vertices
-greedy_top_execution_times = greedy_top_data[greedy_top_data['Vertices / Edge %'].isin(common_vertices)].iloc[:, 1:].values
-greedy_bottom_execution_times = greedy_bottom_data[greedy_bottom_data['Vertices / Edge %'].isin(common_vertices)].iloc[:, 1:].values
+greedy_top_execution_times = greedy_top_data[greedy_top_data['Vertices / Edge %'].isin(greedy_vertices)].iloc[:, 1:].values
+greedy_bottom_execution_times = greedy_bottom_data[greedy_bottom_data['Vertices / Edge %'].isin(greedy_vertices)].iloc[:, 1:].values
 exhaustive_execution_times = exhaustive_data[exhaustive_data['Vertices / Edge %'].isin(common_vertices)].iloc[:, 1:].values
 
 # --- Plot for Greedy Top Heuristic ---
 plt.figure(figsize=(10, 6))
 for i, edge_percentage in enumerate(edges):
-    plt.plot(common_vertices, greedy_top_execution_times[:, i], label=f'{edge_percentage}% Edges (Greedy Top)')
+    plt.plot(greedy_vertices, greedy_top_execution_times[:, i], label=f'{edge_percentage}% Edges (Greedy Top)')
 plt.title('Greedy Algorithm Execution Times (Top Heuristic)')
 plt.xlabel('Number of Vertices')
 plt.ylabel('Execution Time (ms)')
 plt.legend(title='Edge Percentage')
 plt.grid(True, which="both", ls="--")
-plt.yscale('log')
+# plt.yscale('log')
 plt.savefig('plots/greedy_top_plot.png')
 plt.show()
 
 # --- Plot for Greedy Bottom Heuristic ---
 plt.figure(figsize=(10, 6))
 for i, edge_percentage in enumerate(edges):
-    plt.plot(common_vertices, greedy_bottom_execution_times[:, i], label=f'{edge_percentage}% Edges (Greedy Bottom)')
+    plt.plot(greedy_vertices, greedy_bottom_execution_times[:, i], label=f'{edge_percentage}% Edges (Greedy Bottom)')
 plt.title('Greedy Algorithm Execution Times (Bottom Heuristic)')
 plt.xlabel('Number of Vertices')
 plt.ylabel('Execution Time (ms)')
@@ -60,9 +60,13 @@ plt.xlabel('Number of Vertices')
 plt.ylabel('Execution Time (ms)')
 plt.legend(title='Edge Percentage')
 plt.grid(True)
-plt.yscale('log')
+# plt.yscale('log')
 plt.savefig('plots/exhaustive_algorithm_plot.png')
 plt.show()
+
+
+greedy_top_execution_times = greedy_top_data[greedy_top_data['Vertices / Edge %'].isin(common_vertices)].iloc[:, 1:].values
+greedy_bottom_execution_times = greedy_bottom_data[greedy_bottom_data['Vertices / Edge %'].isin(common_vertices)].iloc[:, 1:].values
 
 
 # --- Plot comparison of greedy and exhaustive for a specific edge percentage ---

@@ -113,20 +113,20 @@ def greedy_chromatic_number_bottom(graph):
 
 def main():
     edges = [12.5, 25, 50, 75]
-    trials = 2
-    maxVertices = 14
+    trials = 3
+    maxVertices = 500
 
-    with open('data/greedy_results_top.csv', mode='w', newline='') as greedy_top_file, \
-         open('data/greedy_results_bottom.csv', mode='w', newline='') as greedy_bottom_file, \
-         open('data/exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
+    with open('exec_times/greedy_top_times.csv', mode='w', newline='') as greedy_top_file, \
+         open('exec_times/greedy_bottom_times.csv', mode='w', newline='') as greedy_bottom_file, \
+         open('exec_times/exhaustive_times.csv', mode='w', newline='') as exhaustive_file:
 
-        # greedy_top_writer = csv.writer(greedy_top_file)
-        # greedy_bottom_writer = csv.writer(greedy_bottom_file)
+        greedy_top_writer = csv.writer(greedy_top_file)
+        greedy_bottom_writer = csv.writer(greedy_bottom_file)
         exhaustive_writer = csv.writer(exhaustive_file)
 
         headers = ['Vertices / Edge %'] + [f'{edge}%' for edge in edges]
-        # greedy_top_writer.writerow(headers)
-        # greedy_bottom_writer.writerow(headers)
+        greedy_top_writer.writerow(headers)
+        greedy_bottom_writer.writerow(headers)
         exhaustive_writer.writerow(headers)
 
         for num_vertices in range(4, maxVertices + 1):  # Adjusted range to include maxVertices
@@ -156,16 +156,26 @@ def main():
                     end = time.time()
                     greedy_bottom_times.append((end - start) * 10**3)
 
-                    # Exhaustive Search
-                    start = time.time()
-                    chromatic_num_exhaustive = exhaustive_chromatic_number(G)
-                    end = time.time()
-                    exhaustive_times.append((end - start) * 10**3)
+                    # Exhaustive Search (max 11 vertices)
+                    if num_vertices <= 11:
+                        start = time.time()
+                        chromatic_num_exhaustive = None
+                        chromatic_num_exhaustive = exhaustive_chromatic_number(G)
+                        end = time.time()
+                        exhaustive_times.append((end - start) * 10**3)
 
-                # Calculate averages
+
                 avg_greedy_top_time = sum(greedy_top_times) / trials
                 avg_greedy_bottom_time = sum(greedy_bottom_times) / trials
-                avg_exhaustive_time = sum(exhaustive_times) / trials
+                
+                greedy_top_row.append(avg_greedy_top_time)
+                greedy_bottom_row.append(avg_greedy_bottom_time)
+
+                if num_vertices <= 11:
+                    avg_exhaustive_time = sum(exhaustive_times) / trials
+                    exhaustive_row.append(avg_exhaustive_time)
+
+
 
                 print(f"\n\n\n({num_vertices} vertices, {possible_edges}% edges)")
 
@@ -178,15 +188,12 @@ def main():
                 print(f"\nExaustive Chromatic Number: "+str(chromatic_num_exhaustive))
                 print(f"Exhaustive Execution Time: {avg_exhaustive_time:.4f} ms")
 
-                # Append results to rows
-                greedy_top_row.append(avg_greedy_top_time)
-                greedy_bottom_row.append(avg_greedy_bottom_time)
-                exhaustive_row.append(avg_exhaustive_time)
-
+                
             # Write rows to CSV files
-            # greedy_top_writer.writerow(greedy_top_row)
-            # greedy_bottom_writer.writerow(greedy_bottom_row)
-            exhaustive_writer.writerow(exhaustive_row)
+            greedy_top_writer.writerow(greedy_top_row)
+            greedy_bottom_writer.writerow(greedy_bottom_row)
+            if num_vertices <= 11:
+                exhaustive_writer.writerow(exhaustive_row)
 
 
 if __name__ == "__main__":

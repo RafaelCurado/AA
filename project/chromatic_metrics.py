@@ -37,10 +37,12 @@ def generate_random_graph(num_vertices, edge_percentage):
 
 # Exhaustive Search with tracking of operations and configurations tested
 def is_valid_coloring(graph, coloring):
+    basic_operations = 0
     for u, v in graph.edges():
+        basic_operations += 1
         if coloring[u] == coloring[v]:
-            return False
-    return True
+            return False, basic_operations
+    return True, basic_operations
 
 def exhaustive_chromatic_number(graph):
     n = len(graph.nodes())
@@ -50,8 +52,9 @@ def exhaustive_chromatic_number(graph):
     for num_colors in range(1, n + 1):
         for coloring in product(range(num_colors), repeat=n):
             configurations_tested += 1
-            basic_operations += n  # Each check for validity is an operation
-            if is_valid_coloring(graph, coloring):
+            is_valid, edge_operations = is_valid_coloring(graph, coloring)  # Check if valid and get edge operations
+            basic_operations += edge_operations    
+            if is_valid:                            # If the coloring is valid
                 return num_colors, basic_operations, configurations_tested
     return n, basic_operations, configurations_tested  # Worst case
 
@@ -81,10 +84,10 @@ def greedy_chromatic_number_top(graph):
 def main():
     edges = [12.5, 25, 50, 75]
     trials = 3
-    maxVertices = 10
+    maxVertices = 15
 
-    with open('metrics_data/greedy_results.csv', mode='w', newline='') as greedy_file, \
-         open('metrics_data/exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
+    with open('metrics/greedy_results.csv', mode='w', newline='') as greedy_file, \
+         open('metrics/exhaustive_results.csv', mode='w', newline='') as exhaustive_file:
         
         greedy_writer = csv.writer(greedy_file)
         exhaustive_writer = csv.writer(exhaustive_file)
@@ -96,8 +99,11 @@ def main():
         exhaustive_writer.writerow(headers[:-1])  # Exhaustive doesn't need precision
 
         for num_vertices in range(4, maxVertices + 1):
+            print("Vertices: "+str(num_vertices))
             for edge_percentage in edges:
                 G = generate_random_graph(num_vertices, edge_percentage / 100)
+                num_edges = G.number_of_edges()  # Get the number of edges
+                edges_formatted = f"{num_edges} ({edge_percentage}%)"
 
                 # Greedy Heuristic (Top)
                 greedy_times = []
@@ -135,7 +141,7 @@ def main():
                     avg_exhaustive_time = sum(exhaustive_times) / trials
                     avg_exhaustive_ops = exhaustive_basic_ops // trials
                     avg_exhaustive_configs = exhaustive_configs // trials
-                    exhaustive_writer.writerow([num_vertices, edge_percentage, chromatic_num_exhaustive, 
+                    exhaustive_writer.writerow([num_vertices, edges_formatted, chromatic_num_exhaustive, 
                                                 f"{avg_exhaustive_time:.4f}", avg_exhaustive_ops, avg_exhaustive_configs])
 
                     # Calculate precision
@@ -144,8 +150,7 @@ def main():
                     precision = None  # Precision not applicable when exhaustive not run
 
                 # Write greedy heuristic results with precision
-                greedy_writer.writerow([num_vertices, edge_percentage, chromatic_num_greedy, 
-                                        f"{avg_greedy_time:.4f}", avg_greedy_ops, avg_greedy_configs, precision])
+                greedy_writer.writerow([num_vertices, edges_formatted, chromatic_num_greedy, f"{avg_greedy_time:.4f}", avg_greedy_ops, avg_greedy_configs, precision])
 
 if __name__ == "__main__":
     main()

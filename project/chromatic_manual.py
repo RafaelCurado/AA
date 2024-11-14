@@ -129,22 +129,26 @@ def greedy_chromatic_number_bottom(graph):
     
     # Max color used + 1
     chromatic_number = max(coloring.values()) + 1
-    return chromatic_number, coloring
+    return chromatic_number
 
 
 
 def main():
-    edges = [12.5, 25, 50, 75]
+    # edges = [12.5, 25, 50, 75]
+    edges = [12.5]
 
-    max_vertices = 10000
+    max_vertices = 10000    
 
-    for num_vertices in range(1000, max_vertices):
+    for num_vertices in range(4750, max_vertices+1):
 
         for possible_edges in edges:
             start = time.time()    
-    
             G = generate_random_graph(num_vertices, possible_edges/100) # calculate points
+            end = time.time()
+            graph_generation_time = (end-start)*10**3
 
+
+            start = time.time()    
             chromatic_num_greedy_top = greedy_chromatic_number_top(G)
             end = time.time()
             greedy_time_top = (end-start)*10**3
@@ -152,9 +156,11 @@ def main():
 
             print(f"\nVertices: "+str(num_vertices))
             print(f"Edges: "+str(possible_edges))
-            print(f"Greedy Chromatic Number (Top): "+str(chromatic_num_greedy_top))
-            print(f"Greedy (Top) Execution Time: {greedy_time_top:.4f} ms")
+            print(f"Greedy Chromatic Number: "+str(chromatic_num_greedy_top))
+            print(f"Greedy Execution Time: {greedy_time_top:.4f} ms")
+            print(f"Graph Generation Time: {graph_generation_time:.4f} ms")
 
+            # visualize_graph(G, coloring, f"graph_{num_vertices}_{possible_edges}.png")
 
 
 if __name__ == "__main__":
