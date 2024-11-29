@@ -1,0 +1,4 @@
+- oque é suposto esperar do algortimo random?
+- a minha approach pode ser uma versão random da greedy heuristic? 
+(apenas troquei a maneira como os vertices são ordenados, de ordenação pelo grau para ordenação random)
+
