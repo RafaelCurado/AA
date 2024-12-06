@@ -1,18 +1,10 @@
+import os
 import random
 import time
 import csv
 import networkx as nx
 from itertools import product
-from graph_utils import generate_random_graph, save_graph, load_graph
-
-
-# studentN = 103199
-# random.seed(studentN)
-
-#  Not using seed anymore because it was used in the 1st project 
-#   for the graphs generation and now it would have different values
-#   because in the 2st project random() is used more often
-
+from graph_utils import load_webgraph
 
 # EXHAUSTIVE SEARCH with tracking of operations and configurations tested
 def is_valid_coloring(graph, coloring):
@@ -62,7 +54,7 @@ def greedy_chromatic_number(graph):
 
 
 # RANDOM GREEDY with tracking of operations and configurations tested
-def random_greedy_chromatic_number(graph, trials=30):
+def random_greedy_chromatic_number(graph, trials):
     basic_operations = 0
     configurations_tested = 0
     
@@ -115,55 +107,75 @@ def networkx_random_sequential(graph, trials):
     return best_chromatic_number
 
 
+
+
 def main():
-    edges = [12.5, 25, 50, 75]
     trials = 1
-    maxVertices = 500
-    graph_folder = "graphs"  
+    graph_folder = "graphs_web"  
+    facebook_folder = "graphs_web/facebook"
+    sw_folder = "graphs_web/sw"
     exhaustive_max_vertices = 11
 
-    with open('results/greedy_results.csv', mode='w', newline='') as greedy_file, \
-         open('results/exhaustive_results.csv', mode='w', newline='') as exhaustive_file, \
-         open('results/random_greedy_results.csv', mode='w', newline='') as random_greedy_file, \
-         open('results/nx_random_sequential_results.csv', mode='w', newline='') as nx_random_sequential_file:
+    # Open the CSV files for saving the results
+    with open('results_webgraphs/facebook/greedy_results.csv', mode='w', newline='') as facebook_greedy_file, \
+         open('results_webgraphs/facebook/exhaustive_results.csv', mode='w', newline='') as facebook_exhaustive_file, \
+         open('results_webgraphs/facebook/random_greedy_results.csv', mode='w', newline='') as facebook_random_greedy_file, \
+         open('results_webgraphs/facebook/nx_random_sequential_results.csv', mode='w', newline='') as facebook_nx_random_sequential_file, \
+         open('results_webgraphs/sw/greedy_results.csv', mode='w', newline='') as sw_greedy_file, \
+         open('results_webgraphs/sw/exhaustive_results.csv', mode='w', newline='') as sw_exhaustive_file, \
+         open('results_webgraphs/sw/random_greedy_results.csv', mode='w', newline='') as sw_random_greedy_file, \
+         open('results_webgraphs/sw/nx_random_sequential_results.csv', mode='w', newline='') as sw_nx_random_sequential_file:
         
-        greedy_writer = csv.writer(greedy_file)
-        exhaustive_writer = csv.writer(exhaustive_file)
-        random_greedy_writer = csv.writer(random_greedy_file)
-        nx_random_sequential_writer = csv.writer(nx_random_sequential_file)
+        # Create CSV writers for both folders
+        facebook_writers = {
+            "greedy": csv.writer(facebook_greedy_file),
+            "exhaustive": csv.writer(facebook_exhaustive_file),
+            "random_greedy": csv.writer(facebook_random_greedy_file),
+            "nx_random_sequential": csv.writer(facebook_nx_random_sequential_file),
+        }
+        sw_writers = {
+            "greedy": csv.writer(sw_greedy_file),
+            "exhaustive": csv.writer(sw_exhaustive_file),
+            "random_greedy": csv.writer(sw_random_greedy_file),
+            "nx_random_sequential": csv.writer(sw_nx_random_sequential_file),
+        }
 
-        # CSV headers
-        headers = ['Vertices', 'Edge %', 'Chromatic Number', 'Exec Time', 
+        headers = ['Vertices', 'Edges', 'Chromatic Number', 'Exec Time', 
                    'Basic Operations', 'Configurations Tested', 'Precision']
-        greedy_writer.writerow(headers)
-        exhaustive_writer.writerow(headers[:-1])  # Exhaustive doesn't need precision
-        random_greedy_writer.writerow(headers)
-        nx_random_sequential_writer.writerow(headers[:-3] + headers[-1:])
+        for writer in facebook_writers.values():
+            writer.writerow(headers[:-1])
+        for writer in sw_writers.values():
+            writer.writerow(headers[:-1])
 
+        def process_directory(folder, writers):
+            graph_files = [f for f in os.listdir(folder) if f.endswith(".edges") or f.endswith(".txt")]
+            sorted_graph_files = []
 
-        for num_vertices in range(4, maxVertices + 1):
-            print("Vertices: "+str(num_vertices))
-            
-            for edge_percentage in edges:
+            for graph_filename in graph_files:
+                G = load_webgraph(graph_folder, graph_filename)  
+                if G is not None:
+                    num_vertices = len(G.nodes())
+                    sorted_graph_files.append((num_vertices, graph_filename))
+                else:
+                    print(f"Failed to load graph: {graph_filename}")
 
-                # Graph filename based on parameters
-                graph_filename = f"graph_{num_vertices}_vertices_{int(edge_percentage)}_edges.pkl"
-                G = load_graph(graph_folder, graph_filename)  # Try loading the graph
+            sorted_graph_files.sort(key=lambda x: x[0])
+
+            for num_vertices, graph_filename in sorted_graph_files:
+                G = load_webgraph(graph_folder, graph_filename)
 
                 if G is None:
-                    G = generate_random_graph(num_vertices, edge_percentage / 100)  # Generate the graph
-                    save_graph(G, graph_folder, graph_filename)  # Save the graph
+                    print(f"Graph {graph_filename} not found!")
+                    continue
 
-
-                num_edges = G.number_of_edges()  # Get the number of edges
-                edges_formatted = f"{num_edges} ({edge_percentage}%)"
+                num_edges = G.number_of_edges()
 
                 # Greedy Heuristic 
                 greedy_times = []
                 greedy_basic_ops = 0
                 greedy_configs = 0
                 chromatic_num_greedy = None
-                
+
                 for _ in range(trials):
                     start = time.time()
                     chromatic_num_greedy, basic_ops_greedy, configs_greedy = greedy_chromatic_number(G)
@@ -171,18 +183,17 @@ def main():
                     greedy_times.append((end - start) * 10**3)
                     greedy_basic_ops += basic_ops_greedy
                     greedy_configs += configs_greedy
-                
+
                 avg_greedy_time = sum(greedy_times) / trials
                 avg_greedy_ops = greedy_basic_ops // trials
                 avg_greedy_configs = greedy_configs // trials
-
 
                 # Random Greedy Heuristic 
                 random_greedy_times = []
                 random_greedy_basic_ops = 0
                 random_greedy_configs = 0
                 chromatic_num_random_greedy = None
-                
+
                 for _ in range(trials):
                     start = time.time()
                     chromatic_num_random_greedy, basic_ops_random_greedy, configs_random_greedy = random_greedy_chromatic_number(G, min(500, 6*num_vertices))
@@ -190,7 +201,7 @@ def main():
                     random_greedy_times.append((end - start) * 10**3)
                     random_greedy_basic_ops += basic_ops_random_greedy
                     random_greedy_configs += configs_random_greedy
-                
+
                 avg_random_greedy_time = sum(random_greedy_times) / trials
                 avg_random_greedy_ops = random_greedy_basic_ops // trials
                 avg_random_greedy_configs = random_greedy_configs // trials
@@ -226,23 +237,24 @@ def main():
                     avg_exhaustive_time = sum(exhaustive_times) / trials
                     avg_exhaustive_ops = exhaustive_basic_ops // trials
                     avg_exhaustive_configs = exhaustive_configs // trials
-                    exhaustive_writer.writerow([num_vertices, edges_formatted, chromatic_num_exhaustive, f"{avg_exhaustive_time:.4f}", avg_exhaustive_ops, avg_exhaustive_configs])
+                    writers["exhaustive"].writerow([num_vertices, num_edges, chromatic_num_exhaustive, 
+                                                    f"{avg_exhaustive_time:.4f}", avg_exhaustive_ops, avg_exhaustive_configs])
 
-                    # Calculate precision
                     greedy_precision = abs(chromatic_num_exhaustive - chromatic_num_greedy)
                     random_greedy_precision = abs(chromatic_num_exhaustive - chromatic_num_random_greedy)
-                    nx_random_sequential_precision = abs(chromatic_num_exhaustive - chromatic_num_nx_random_sequential)
                 else:
-                    greedy_precision = None         # Precision not applicable when exhaustive not run
-                    random_greedy_precision = None  # Precision not applicable when exhaustive not run
-                    nx_random_sequential_precision = None  # Precision not applicable when exhaustive not run
+                    greedy_precision = None
+                    random_greedy_precision = None
 
+                writers["greedy"].writerow([num_vertices, num_edges, chromatic_num_greedy, f"{avg_greedy_time:.4f}", avg_greedy_ops, avg_greedy_configs])
+                writers["random_greedy"].writerow([num_vertices, num_edges, chromatic_num_random_greedy, f"{avg_random_greedy_time:.4f}", avg_random_greedy_ops, avg_random_greedy_configs])
+                writers["nx_random_sequential"].writerow([num_vertices, num_edges, chromatic_num_nx_random_sequential, f"{avg_nx_random_sequential_time:.4f}", "", ""])
 
-                # Write results 
-                greedy_writer.writerow([num_vertices, edges_formatted, chromatic_num_greedy, f"{avg_greedy_time:.4f}", avg_greedy_ops, avg_greedy_configs, greedy_precision])
-                random_greedy_writer.writerow([num_vertices, edges_formatted, chromatic_num_random_greedy, f"{avg_random_greedy_time:.4f}", avg_random_greedy_ops, avg_random_greedy_configs, random_greedy_precision])
-                nx_random_sequential_writer.writerow([num_vertices, edges_formatted, chromatic_num_nx_random_sequential, f"{avg_nx_random_sequential_time:.4f}", nx_random_sequential_precision])
+        # Process Facebook graphs
+        process_directory(facebook_folder, facebook_writers)
 
+        # Process SW graphs
+        process_directory(sw_folder, sw_writers)
 
 if __name__ == "__main__":
     main()
